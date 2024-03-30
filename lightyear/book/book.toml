@@ -1,0 +1,15 @@
+[book]
+authors = ["Charles Bournhonesque"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Lightyear cheatbook"
+
+[preprocessor]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output]
+
+[output.linkcheck]

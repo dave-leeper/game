@@ -1,0 +1,38 @@
+[package]
+name = "lightyear-benches"
+version = "0.0.0"
+publish = false
+authors = ["Charles Bournhonesque <charlesbour@gmail.com>"]
+edition = "2021"
+rust-version = "1.65"
+description = "Benchmark tests for lightyear"
+readme = "../README.md"
+repository = "https://github.com/cBournhonesque/lightyear"
+keywords = ["bevy", "multiplayer", "networking", "netcode", "gamedev"]
+categories = ["game-development", "network-programming"]
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+lightyear = { path = "../lightyear" }
+crossbeam-channel = "0.5.10"
+anyhow = { version = "1.0.75", features = [] }
+bevy = { version = "0.13", features = ["bevy_core_pipeline"] }
+derive_more = { version = "0.99", features = ["add", "mul"] }
+divan = "0.1.14"
+serde = { version = "1.0.188", features = ["derive"] }
+
+bitcode = "0.6.0-beta.1"
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+lz4_flex = { version = "0.11.2", default-features = false }
+
+
+[[bench]]
+name = "spawn"
+path = "spawn.rs"
+harness = false
+
+[[bench]]
+name = "bitcode_packing"
+path = "bitcode_packing.rs"
+harness = false
