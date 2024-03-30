@@ -198,7 +198,7 @@ pub fn get_server_net_configs(settings: &Settings) -> Vec<server::NetConfig> {
                 let certificate = IoTaskPool::get()
                     .scope(|s| {
                         s.spawn(Compat::new(async {
-                            Certificate::load("../certificates/cert.pem", "../certificates/key.pem")
+                            Certificate::load("./certificates/cert.pem", "./certificates/key.pem")
                                 .await
                                 .unwrap()
                         }));
