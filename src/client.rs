@@ -87,12 +87,24 @@ impl Plugin for ExampleClientPlugin {
 }
 
 // Startup system for the client
-pub(crate) fn init(mut commands: Commands, mut client: ResMut<ClientConnection>) {
-    commands.spawn(Camera2dBundle::default());
+pub(crate) fn init(mut commands: Commands, mut client: ResMut<ClientConnection>, asset_server: Res<AssetServer>) {
+    // commands.spawn(Camera2dBundle::default());
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(0.7, 0.7, 1.0)
+                .looking_at(Vec3::new(0.0, 0.3, 0.0), Vec3::Y),
+            ..default()
+        },
+        EnvironmentMapLight {
+            diffuse_map: asset_server.load("environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2"),
+            specular_map: asset_server.load("environment_maps/pisa_specular_rgb9e5_zstd.ktx2"),
+            intensity: 250.0,
+        },
+    ));
     let _ = client.connect();
 }
 
-pub(crate) fn spawn_cursor(mut commands: Commands, metadata: Res<GlobalMetadata>) {
+pub(crate) fn spawn_cursor(mut commands: Commands, metadata: Res<GlobalMetadata>, asset_server: Res<AssetServer>) {
     // the `GlobalMetadata` resource holds metadata related to the client
     // once the connection is established.
     if metadata.is_changed() {
@@ -106,11 +118,14 @@ pub(crate) fn spawn_cursor(mut commands: Commands, metadata: Res<GlobalMetadata>
                 },
             ));
             // spawn a local cursor which will be replicated to other clients, but remain client-authoritative.
-            commands.spawn(CursorBundle::new(
+            let x : Handle<Scene> = asset_server.load("models/female.glb#Scene0");
+            let mut y = commands.spawn(ActorBundle::new(
                 client_id,
                 Vec2::ZERO,
                 color_from_id(client_id),
+                x,
             ));
+            y.log_components();
         }
     }
 }
@@ -181,6 +196,7 @@ fn spawn_player(
     mut input_reader: EventReader<InputEvent<Inputs>>,
     metadata: Res<GlobalMetadata>,
     players: Query<&PlayerId, With<PlayerPosition>>,
+    asset_server: Res<AssetServer>,
 ) {
     // return early if we still don't have access to the client id
     let Some(client_id) = metadata.client_id else {
@@ -195,11 +211,13 @@ fn spawn_player(
     }
     for input in input_reader.read() {
         if let Some(input) = input.input() {
+            let x : Handle<Scene> = asset_server.load("models/female.glb#Scene0");
+
             match input {
                 Inputs::Spawn => {
                     debug!("got spawn input");
                     commands.spawn((
-                        PlayerBundle::new(client_id, Vec2::ZERO, color_from_id(client_id)),
+                        PlayerBundle::new(client_id, Vec2::ZERO, color_from_id(client_id), x),
                         // IMPORTANT: this lets the server know that the entity is pre-predicted
                         // when the server replicates this entity; we will get a Confirmed entity which will use this entity
                         // as the Predicted version

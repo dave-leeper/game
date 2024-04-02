@@ -58,7 +58,7 @@ impl Plugin for ExampleServerPlugin {
 }
 
 pub(crate) fn init(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    // commands.spawn(Camera2dBundle::default());
     commands.spawn(TextBundle::from_section(
         "Server",
         TextStyle {

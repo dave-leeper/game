@@ -1,6 +1,6 @@
 use std::ops::Mul;
 
-use bevy::prelude::{default, Bundle, Color, Component, Deref, DerefMut, Vec2};
+use bevy::{prelude::{default, Bundle, Color, Component, Deref, DerefMut, Vec2, Handle, Scene}, scene::SceneBundle};
 use derive_more::{Add, Mul};
 use serde::{Deserialize, Serialize};
 
@@ -13,10 +13,11 @@ pub(crate) struct PlayerBundle {
     position: PlayerPosition,
     color: PlayerColor,
     replicate: Replicate,
+    scene: Handle<Scene>,
 }
 
 impl PlayerBundle {
-    pub(crate) fn new(id: ClientId, position: Vec2, color: Color) -> Self {
+    pub(crate) fn new(id: ClientId, position: Vec2, color: Color, scene: Handle<Scene>) -> Self {
         Self {
             id: PlayerId(id),
             position: PlayerPosition(position),
@@ -27,21 +28,23 @@ impl PlayerBundle {
                 interpolation_target: NetworkTarget::AllExcept(vec![id]),
                 ..default()
             },
+            scene: scene.clone()
         }
     }
 }
 
 // Player
 #[derive(Bundle)]
-pub(crate) struct CursorBundle {
+pub(crate) struct ActorBundle {
     id: PlayerId,
     position: CursorPosition,
     color: PlayerColor,
     replicate: Replicate,
+    scene: Handle<Scene>,
 }
 
-impl CursorBundle {
-    pub(crate) fn new(id: ClientId, position: Vec2, color: Color) -> Self {
+impl ActorBundle {
+    pub(crate) fn new(id: ClientId, position: Vec2, color: Color, scene: Handle<Scene>) -> Self {
         Self {
             id: PlayerId(id),
             position: CursorPosition(position),
@@ -51,6 +54,7 @@ impl CursorBundle {
                 interpolation_target: NetworkTarget::AllExcept(vec![id]),
                 ..default()
             },
+            scene: scene.clone()
         }
     }
 }
