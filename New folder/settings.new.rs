@@ -5,44 +5,15 @@ use std::net::{Ipv4Addr, SocketAddr};
 use async_compat::Compat;
 use bevy::tasks::IoTaskPool;
 use serde::{Deserialize, Serialize};
-// DKL New
 use bevy::math::Vec3;
 
-#[cfg(not(target_family = "wasm"))]
-use lightyear::prelude::server::Certificate;
-use crate::{client, server};
 use lightyear::prelude::client::Authentication;
 #[cfg(not(target_family = "wasm"))]
 use lightyear::prelude::client::SteamConfig;
 use lightyear::prelude::{ClientId, IoConfig, LinkConditionerConfig, TransportConfig};
 
-// DKL New
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum CameraType {
-    Basic2d,
-    Orthographic,
-    Perspective,
-    PanOrbit,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CameraInformation {
-    pub(crate) camera_type: CameraType,
-    pub(crate) position: Vec3,
-    pub(crate) look_at: Vec3,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Employee {
-    pub(crate) first_name: String,
-    pub(crate) last_name: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct EmployeeList {
-    pub(crate) employees: Vec<Employee>,
-}
+use crate::server::Certificate;
+use crate::{client, server};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ClientTransports {
@@ -52,7 +23,6 @@ pub enum ClientTransports {
         certificate_digest: String,
     },
     WebSocket,
-    #[cfg(not(target_family = "wasm"))]
     Steam {
         app_id: u32,
     },
@@ -90,8 +60,8 @@ pub struct Conditioner {
 impl Conditioner {
     pub fn build(&self) -> LinkConditionerConfig {
         LinkConditionerConfig {
-            incoming_latency: bevy::utils::Duration::from_millis(self.latency_ms as u64),
-            incoming_jitter: bevy::utils::Duration::from_millis(self.jitter_ms as u64),
+            incoming_latency: std::time::Duration::from_millis(self.latency_ms as u64),
+            incoming_jitter: std::time::Duration::from_millis(self.jitter_ms as u64),
             incoming_loss: self.packet_loss,
         }
     }
@@ -145,12 +115,37 @@ pub struct SharedSettings {
     pub(crate) private_key: [u8; 32],
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum CameraType {
+    Basic2d,
+    Orthographic,
+    Perspective,
+    PanOrbit,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CameraInformation {
+    pub(crate) camera_type: CameraType,
+    pub(crate) position: Vec3,
+    pub(crate) look_at: Vec3,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Employee {
+    pub(crate) first_name: String,
+    pub(crate) last_name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct EmployeeList {
+    pub(crate) employees: Vec<Employee>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Settings {
     pub server: ServerSettings,
     pub client: ClientSettings,
     pub shared: SharedSettings,
-    // DKL New
     pub camera: CameraInformation,
     pub employees: EmployeeList,
 }
@@ -256,7 +251,7 @@ pub fn get_server_net_configs(settings: &Settings) -> Vec<server::NetConfig> {
 
 /// Build a netcode config for the client
 pub fn build_client_netcode_config(
-    client_id: u64,
+    client_id: ClientId,
     server_addr: SocketAddr,
     conditioner: Option<&Conditioner>,
     shared: &SharedSettings,
@@ -285,7 +280,7 @@ pub fn build_client_netcode_config(
 
 /// Parse the settings into a `NetConfig` that is used to configure how the lightyear client
 /// connects to the server
-pub fn get_client_net_config(settings: &Settings, client_id: u64) -> client::NetConfig {
+pub fn get_client_net_config(settings: &Settings, client_id: ClientId) -> client::NetConfig {
     let server_addr = SocketAddr::new(
         settings.client.server_addr.into(),
         settings.client.server_port,
@@ -309,7 +304,7 @@ pub fn get_client_net_config(settings: &Settings, client_id: u64) -> client::Net
                 client_addr,
                 server_addr,
                 #[cfg(target_family = "wasm")]
-                certificate_digest: certificat_digest.to_string(),
+                certificate_digest,
             },
         ),
         ClientTransports::WebSocket => build_client_netcode_config(
@@ -319,7 +314,6 @@ pub fn get_client_net_config(settings: &Settings, client_id: u64) -> client::Net
             &settings.shared,
             TransportConfig::WebSocketClient { server_addr },
         ),
-        #[cfg(not(target_family = "wasm"))]
         ClientTransports::Steam { app_id } => client::NetConfig::Steam {
             config: SteamConfig {
                 server_addr,

@@ -1,15 +1,13 @@
 use bevy::prelude::*;
 use bevy::render::RenderPlugin;
 use bevy::utils::Duration;
-use lightyear::client::interpolation::Interpolated;
-use lightyear::client::prediction::Predicted;
 
 use lightyear::prelude::client::Confirmed;
 use lightyear::prelude::*;
 
 use crate::protocol::*;
 
-pub fn shared_config(mode: Mode) -> SharedConfig {
+pub fn shared_config() -> SharedConfig {
     SharedConfig {
         client_send_interval: Duration::default(),
         server_send_interval: Duration::from_millis(40),
@@ -17,7 +15,6 @@ pub fn shared_config(mode: Mode) -> SharedConfig {
         tick: TickConfig {
             tick_duration: Duration::from_secs_f64(1.0 / 64.0),
         },
-        mode,
     }
 }
 
@@ -26,19 +23,14 @@ pub struct SharedPlugin;
 impl Plugin for SharedPlugin {
     fn build(&self, app: &mut App) {
         if app.is_plugin_added::<RenderPlugin>() {
-            app.add_systems(Startup, init);
             app.add_systems(PostUpdate, draw_elements);
         }
     }
 }
 
-fn init(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
-}
-
 // Generate pseudo-random color from id
 pub(crate) fn color_from_id(client_id: ClientId) -> Color {
-    let h = (((client_id.to_bits().wrapping_mul(90)) % 360) as f32) / 360.0;
+    let h = (((client_id.wrapping_mul(90)) % 360) as f32) / 360.0;
     let s = 1.0;
     let l = 0.5;
     Color::hsl(h, s, l)

@@ -4,9 +4,6 @@ use std::net::{Ipv4Addr, SocketAddr};
 use bevy::app::PluginGroupBuilder;
 use bevy::prelude::*;
 use bevy::utils::Duration;
-use lightyear::client::components::Confirmed;
-use lightyear::client::interpolation::Interpolated;
-use lightyear::client::prediction::Predicted;
 
 pub use lightyear::prelude::server::*;
 use lightyear::prelude::*;
@@ -14,6 +11,34 @@ use lightyear::prelude::*;
 use crate::protocol::*;
 use crate::shared::{color_from_id, shared_config, shared_movement_behaviour};
 use crate::{shared, ServerTransports, SharedSettings};
+
+// Plugin group to add all server-related plugins
+pub struct ServerPluginGroup {
+    pub(crate) lightyear: ServerPlugin<MyProtocol>,
+}
+
+impl ServerPluginGroup {
+    pub(crate) fn new(net_configs: Vec<NetConfig>) -> ServerPluginGroup {
+        let config = ServerConfig {
+            shared: shared_config(),
+            net: net_configs,
+            ..default()
+        };
+        let plugin_config = PluginConfig::new(config, protocol());
+        ServerPluginGroup {
+            lightyear: ServerPlugin::new(plugin_config),
+        }
+    }
+}
+
+impl PluginGroup for ServerPluginGroup {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(self.lightyear)
+            .add(ExampleServerPlugin)
+            .add(shared::SharedPlugin)
+    }
+}
 
 // Plugin for server-specific logic
 pub struct ExampleServerPlugin;
@@ -24,7 +49,7 @@ impl Plugin for ExampleServerPlugin {
         // Re-adding Replicate components to client-replicated entities must be done in this set for proper handling.
         app.add_systems(
             PreUpdate,
-            (replicate_cursors, replicate_players).in_set(ServerReplicationSet::ClientReplication),
+            (replicate_cursors, replicate_players).in_set(MainSet::ClientReplication),
         );
         // the physics/FixedUpdates systems that consume inputs should be run in this set
         app.add_systems(FixedUpdate, (movement, delete_player));
@@ -32,26 +57,16 @@ impl Plugin for ExampleServerPlugin {
     }
 }
 
-pub(crate) fn init(mut commands: Commands, mut connections: ResMut<ServerConnections>) {
-    for connection in &mut connections.servers {
-        let _ = connection.start().inspect_err(|e| {
-            error!("Failed to start server: {:?}", e);
-        });
-    }
-    commands.spawn(
-        TextBundle::from_section(
-            "Server",
-            TextStyle {
-                font_size: 30.0,
-                color: Color::WHITE,
-                ..default()
-            },
-        )
-        .with_style(Style {
-            align_self: AlignSelf::End,
+pub(crate) fn init(mut commands: Commands) {
+    // commands.spawn(Camera2dBundle::default());
+    commands.spawn(TextBundle::from_section(
+        "Server",
+        TextStyle {
+            font_size: 30.0,
+            color: Color::WHITE,
             ..default()
-        }),
-    );
+        },
+    ));
 }
 
 /// Server disconnection system, delete all player entities upon disconnection
@@ -79,10 +94,7 @@ pub(crate) fn movement(
     for input in input_reader.read() {
         let client_id = input.context();
         if let Some(input) = input.input() {
-            if matches!(input, Inputs::None) {
-                continue;
-            }
-            trace!(
+            debug!(
                 "Receiving input: {:?} from client: {:?} on tick: {:?}",
                 input,
                 client_id,
@@ -142,7 +154,7 @@ pub(crate) fn replicate_players(
         // for all cursors we have received, add a Replicate component so that we can start replicating it
         // to other clients
         if let Some(mut e) = commands.get_entity(entity) {
-            let mut replicate = Replicate {
+            e.insert(Replicate {
                 // we want to replicate back to the original client, since they are using a pre-spawned entity
                 replication_target: NetworkTarget::All,
                 // NOTE: even with a pre-spawned Predicted entity, we need to specify who will run prediction
@@ -152,11 +164,7 @@ pub(crate) fn replicate_players(
                 // we want the other clients to apply interpolation for the player
                 interpolation_target: NetworkTarget::AllExcept(vec![*client_id]),
                 ..default()
-            };
-            // if we receive a pre-predicted entity, only send the prepredicted component back
-            // to the original client
-            replicate.add_target::<PrePredicted>(NetworkTarget::Single(*client_id));
-            e.insert(replicate);
+            });
         }
     }
 }
